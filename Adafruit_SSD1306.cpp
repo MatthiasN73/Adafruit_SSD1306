@@ -163,12 +163,12 @@ bool Adafruit_SSD1306::begin()
     ssd1306_command1(SSD1306_SETPRECHARGE); // 0xd9
     ssd1306_command1(0xF1);
     static const uint8_t init5[] = {
-        SSD1306_SETVCOMDETECT, // 0xDB
+        SSD1306_SETVCOMDETECT,          // 0xDB
         0x40,
-        SSD1306_DISPLAYALLON_RESUME, // 0xA4
-        SSD1306_NORMALDISPLAY,       // 0xA6
+        SSD1306_DISPLAYALLON_RESUME,    // 0xA4
+        SSD1306_NORMALDISPLAY,          // 0xA6
         SSD1306_DEACTIVATE_SCROLL,
-        SSD1306_DISPLAYON}; // Main screen turn on
+        SSD1306_DISPLAYON};             // Main screen turn on
     ssd1306_commandList(init5, sizeof(init5));
 
     return (true);
@@ -191,7 +191,7 @@ void Adafruit_SSD1306::ssd1306_command1(uint8_t c)
     if(cmd != NULL) {
         i2c_master_start(cmd);
         i2c_master_write_byte(cmd, (SSD1306_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
-        i2c_master_write_byte(cmd, SSD1306_CMD_STREAM, true);
+        i2c_master_write_byte(cmd, SSD1306_CONTROL_BYTE_CMD_STREAM, true);
         i2c_master_write_byte(cmd, c, true);
         i2c_master_stop(cmd);
         ESP_ERROR_CHECK_WITHOUT_ABORT(i2c_master_cmd_begin(i2c, cmd, 10/portTICK_PERIOD_MS));
@@ -215,7 +215,7 @@ void Adafruit_SSD1306::ssd1306_commandList(const uint8_t *c, uint8_t n) {
     if(cmd != NULL) {
         i2c_master_start(cmd);
         i2c_master_write_byte(cmd, (SSD1306_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
-        i2c_master_write_byte(cmd, SSD1306_CMD_STREAM, true);
+        i2c_master_write_byte(cmd, SSD1306_CONTROL_BYTE_CMD_STREAM, true);
         while (n--) { i2c_master_write_byte(cmd, *c++, true); }
         i2c_master_stop(cmd);
         ESP_ERROR_CHECK_WITHOUT_ABORT(i2c_master_cmd_begin(i2c, cmd, 10/portTICK_PERIOD_MS));
@@ -366,7 +366,7 @@ void Adafruit_SSD1306::display(void)
 
 	i2c_master_start(cmd);
 	i2c_master_write_byte(cmd, (SSD1306_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
-	i2c_master_write_byte(cmd, SSD1306_DATA_STREAM, true);
+	i2c_master_write_byte(cmd, SSD1306_CONTROL_BYTE_DATA_STREAM, true);
 
     while (count--) {
         i2c_master_write_byte(cmd, *ptr++, true);
