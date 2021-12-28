@@ -24,36 +24,15 @@
 #ifndef _Adafruit_SSD1306_H_
 #define _Adafruit_SSD1306_H_
 
-// ONE of the following three lines must be #defined:
-//#define SSD1306_128_64 ///< DEPRECTAED: old way to specify 128x64 screen
-#define SSD1306_128_32 ///< DEPRECATED: old way to specify 128x32 screen
-//#define SSD1306_96_16  ///< DEPRECATED: old way to specify 96x16 screen
-// This establishes the screen dimensions in old Adafruit_SSD1306 sketches
-// (NEW CODE SHOULD IGNORE THIS, USE THE CONSTRUCTORS THAT ACCEPT WIDTH
-// AND HEIGHT ARGUMENTS).
-
-#if defined(ARDUINO_STM32_FEATHER)
-typedef class HardwareSPI SPIClass;
-#endif
-
+#include "driver/i2c.h"
 #include <Adafruit_GFX.h>
-#include <SPI.h>
-#include <Wire.h>
 
-#if defined(__AVR__)
-typedef volatile uint8_t PortReg;
-typedef uint8_t PortMask;
-#define HAVE_PORTREG
-#elif defined(__SAM3X8E__)
-typedef volatile RwReg PortReg;
-typedef uint32_t PortMask;
-#define HAVE_PORTREG
-#elif (defined(__arm__) || defined(ARDUINO_FEATHER52)) &&                      \
-    !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_RP2040)
-typedef volatile uint32_t PortReg;
-typedef uint32_t PortMask;
-#define HAVE_PORTREG
-#endif
+#define SSD1306_I2C_ADDRESS   0x3C
+
+// Control byte
+#define SSD1306_CMD_SINGLE    0x80
+#define SSD1306_CMD_STREAM    0x00
+#define SSD1306_DATA_STREAM   0x40
 
 /// The following "raw" color names are kept for backwards client compatability
 /// They can be disabled by predefining this macro before including the Adafruit
@@ -64,7 +43,7 @@ typedef uint32_t PortMask;
 #define WHITE SSD1306_WHITE     ///< Draw 'on' pixels
 #define INVERSE SSD1306_INVERSE ///< Invert pixels
 #endif
-/// fit into the SSD1306_ naming scheme
+
 #define SSD1306_BLACK 0   ///< Draw 'off' pixels
 #define SSD1306_WHITE 1   ///< Draw 'on' pixels
 #define SSD1306_INVERSE 2 ///< Invert pixels
@@ -105,6 +84,46 @@ typedef uint32_t PortMask;
 #define SSD1306_ACTIVATE_SCROLL 0x2F                      ///< Start scroll
 #define SSD1306_SET_VERTICAL_SCROLL_AREA 0xA3             ///< Set scroll range
 
+
+#define OLED_I2C_ADDRESS   0x3C
+
+// Control byte
+#define OLED_CONTROL_BYTE_CMD_SINGLE    0x80
+#define OLED_CONTROL_BYTE_CMD_STREAM    0x00
+#define OLED_CONTROL_BYTE_DATA_STREAM   0x40
+
+// Fundamental commands (pg.28)
+#define OLED_CMD_SET_CONTRAST           0x81    // follow with 0x7F
+#define OLED_CMD_DISPLAY_RAM            0xA4
+#define OLED_CMD_DISPLAY_ALLON          0xA5
+#define OLED_CMD_DISPLAY_NORMAL         0xA6
+#define OLED_CMD_DISPLAY_INVERTED       0xA7
+#define OLED_CMD_DISPLAY_OFF            0xAE
+#define OLED_CMD_DISPLAY_ON             0xAF
+
+// Addressing Command Table (pg.30)
+#define OLED_CMD_SET_MEMORY_ADDR_MODE   0x20    // follow with 0x00 = HORZ mode = Behave like a KS108 graphic LCD
+#define OLED_CMD_SET_COLUMN_RANGE       0x21    // can be used only in HORZ/VERT mode - follow with 0x00 and 0x7F = COL127
+#define OLED_CMD_SET_PAGE_RANGE         0x22    // can be used only in HORZ/VERT mode - follow with 0x00 and 0x07 = PAGE7
+
+// Hardware Config (pg.31)
+#define OLED_CMD_SET_DISPLAY_START_LINE 0x40
+#define OLED_CMD_SET_SEGMENT_REMAP      0xA1    
+#define OLED_CMD_SET_MUX_RATIO          0xA8    // follow with 0x3F = 64 MUX
+#define OLED_CMD_SET_COM_SCAN_MODE      0xC8    
+#define OLED_CMD_SET_DISPLAY_OFFSET     0xD3    // follow with 0x00
+#define OLED_CMD_SET_COM_PIN_MAP        0xDA    // follow with 0x12
+#define OLED_CMD_NOP                    0xE3    // NOP
+
+// Timing and Driving Scheme (pg.32)
+#define OLED_CMD_SET_DISPLAY_CLK_DIV    0xD5    // follow with 0x80
+#define OLED_CMD_SET_PRECHARGE          0xD9    // follow with 0xF1
+#define OLED_CMD_SET_VCOMH_DESELCT      0xDB    // follow with 0x30
+
+// Charge Pump (pg.62)
+#define OLED_CMD_SET_CHARGE_PUMP        0x8D    // follow with 0x14
+
+
 // Deprecated size stuff for backwards compatibility with old sketches
 #if defined SSD1306_128_64
 #define SSD1306_LCDWIDTH 128 ///< DEPRECATED: width w/SSD1306_128_64 defined
@@ -119,85 +138,35 @@ typedef uint32_t PortMask;
 #define SSD1306_LCDHEIGHT 16 ///< DEPRECATED: height w/SSD1306_96_16 defined
 #endif
 
-/*!
-    @brief  Class that stores state and functions for interacting with
-            SSD1306 OLED displays.
-*/
 class Adafruit_SSD1306 : public Adafruit_GFX {
+
 public:
-  // NEW CONSTRUCTORS -- recommended for new projects
-  Adafruit_SSD1306(uint8_t w, uint8_t h, TwoWire *twi = &Wire,
-                   int8_t rst_pin = -1, uint32_t clkDuring = 400000UL,
-                   uint32_t clkAfter = 100000UL);
-  Adafruit_SSD1306(uint8_t w, uint8_t h, int8_t mosi_pin, int8_t sclk_pin,
-                   int8_t dc_pin, int8_t rst_pin, int8_t cs_pin);
-  Adafruit_SSD1306(uint8_t w, uint8_t h, SPIClass *spi, int8_t dc_pin,
-                   int8_t rst_pin, int8_t cs_pin, uint32_t bitrate = 8000000UL);
+    Adafruit_SSD1306(uint8_t w, uint8_t h, i2c_port_t port);
+    ~Adafruit_SSD1306(void);
 
-  // DEPRECATED CONSTRUCTORS - for back compatibility, avoid in new projects
-  Adafruit_SSD1306(int8_t mosi_pin, int8_t sclk_pin, int8_t dc_pin,
-                   int8_t rst_pin, int8_t cs_pin);
-  Adafruit_SSD1306(int8_t dc_pin, int8_t rst_pin, int8_t cs_pin);
-  Adafruit_SSD1306(int8_t rst_pin = -1);
-
-  ~Adafruit_SSD1306(void);
-
-  bool begin(uint8_t switchvcc = SSD1306_SWITCHCAPVCC, uint8_t i2caddr = 0,
-             bool reset = true, bool periphBegin = true);
-  void display(void);
-  void clearDisplay(void);
-  void invertDisplay(bool i);
-  void dim(bool dim);
-  void drawPixel(int16_t x, int16_t y, uint16_t color);
-  virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
-  virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
-  void startscrollright(uint8_t start, uint8_t stop);
-  void startscrollleft(uint8_t start, uint8_t stop);
-  void startscrolldiagright(uint8_t start, uint8_t stop);
-  void startscrolldiagleft(uint8_t start, uint8_t stop);
-  void stopscroll(void);
-  void ssd1306_command(uint8_t c);
-  bool getPixel(int16_t x, int16_t y);
-  uint8_t *getBuffer(void);
+    bool begin();
+    void display(void);
+    void clearDisplay(void);
+    void invertDisplay(bool i);
+    void dim(bool dim);
+    void drawPixel(int16_t x, int16_t y, uint16_t color);
+    void startscrollright(uint8_t start, uint8_t stop);
+    void startscrollleft(uint8_t start, uint8_t stop);
+    void startscrolldiagright(uint8_t start, uint8_t stop);
+    void startscrolldiagleft(uint8_t start, uint8_t stop);
+    void stopscroll(void);
+    void ssd1306_command(uint8_t c);
+    bool getPixel(int16_t x, int16_t y);
+    uint8_t* getBuffer(void);
 
 protected:
-  inline void SPIwrite(uint8_t d) __attribute__((always_inline));
-  void drawFastHLineInternal(int16_t x, int16_t y, int16_t w, uint16_t color);
-  void drawFastVLineInternal(int16_t x, int16_t y, int16_t h, uint16_t color);
-  void ssd1306_command1(uint8_t c);
-  void ssd1306_commandList(const uint8_t *c, uint8_t n);
+    i2c_port_t i2c;
+    uint8_t *buffer;    ///< Buffer data used for display buffer. Allocated when
+                        ///< begin method is called.
+    uint8_t contrast;   ///< normal contrast setting for this device    
 
-  SPIClass *spi;   ///< Initialized during construction when using SPI. See
-                   ///< SPI.cpp, SPI.h
-  TwoWire *wire;   ///< Initialized during construction when using I2C. See
-                   ///< Wire.cpp, Wire.h
-  uint8_t *buffer; ///< Buffer data used for display buffer. Allocated when
-                   ///< begin method is called.
-  int8_t i2caddr;  ///< I2C address initialized when begin method is called.
-  int8_t vccstate; ///< VCC selection, set by begin method.
-  int8_t page_end; ///< not used
-  int8_t mosiPin;  ///< (Master Out Slave In) set when using SPI set during
-                   ///< construction.
-  int8_t clkPin;   ///< (Clock Pin) set when using SPI set during construction.
-  int8_t dcPin;    ///< (Data Pin) set when using SPI set during construction.
-  int8_t
-      csPin; ///< (Chip Select Pin) set when using SPI set during construction.
-  int8_t rstPin; ///< Display reset pin assignment. Set during construction.
-
-#ifdef HAVE_PORTREG
-  PortReg *mosiPort, *clkPort, *dcPort, *csPort;
-  PortMask mosiPinMask, clkPinMask, dcPinMask, csPinMask;
-#endif
-#if ARDUINO >= 157
-  uint32_t wireClk;    ///< Wire speed for SSD1306 transfers
-  uint32_t restoreClk; ///< Wire speed following SSD1306 transfers
-#endif
-  uint8_t contrast; ///< normal contrast setting for this device
-#if defined(SPI_HAS_TRANSACTION)
-protected:
-  // Allow sub-class to change
-  SPISettings spiSettings;
-#endif
+    void ssd1306_command1(uint8_t c);
+    void ssd1306_commandList(const uint8_t *c, uint8_t n);
 };
 
 #endif // _Adafruit_SSD1306_H_
