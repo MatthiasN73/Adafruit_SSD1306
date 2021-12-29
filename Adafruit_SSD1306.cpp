@@ -80,21 +80,19 @@ Adafruit_SSD1306::~Adafruit_SSD1306(void)
 /*!
     @brief  Allocate RAM for image buffer, initialize peripherals and pins.
     @param  addr
-            I2C address of corresponding SSD1306 display (or pass 0 to use
-            default of 0x3C for 128x32 display, 0x3D for all others).
-            SPI displays (hardware or software) do not use addresses, but
-            this argument is still required (pass 0 or any value really,
-            it will simply be ignored). Default if unspecified is 0.
+            I2C address of corresponding SSD1306 display
     @return true on successful allocation/init, false otherwise.
             Well-behaved code should check the return value before
             proceeding.
     @note   MUST call this function before any drawing or updates!
 */
-bool Adafruit_SSD1306::begin()
+bool Adafruit_SSD1306::begin(int8_t addr)
 {
     if ((!buffer) && !(buffer = (uint8_t *)malloc(WIDTH * ((HEIGHT + 7) / 8)))) {
         return false;
     }
+
+    i2caddr = addr;
 
     clearDisplay();
 
@@ -190,7 +188,7 @@ void Adafruit_SSD1306::ssd1306_command1(uint8_t c)
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     if(cmd != NULL) {
         i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (SSD1306_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
+        i2c_master_write_byte(cmd, (i2caddr << 1) | I2C_MASTER_WRITE, true);
         i2c_master_write_byte(cmd, SSD1306_CONTROL_BYTE_CMD_STREAM, true);
         i2c_master_write_byte(cmd, c, true);
         i2c_master_stop(cmd);
@@ -214,7 +212,7 @@ void Adafruit_SSD1306::ssd1306_commandList(const uint8_t *c, uint8_t n) {
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     if(cmd != NULL) {
         i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (SSD1306_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
+        i2c_master_write_byte(cmd, (i2caddr << 1) | I2C_MASTER_WRITE, true);
         i2c_master_write_byte(cmd, SSD1306_CONTROL_BYTE_CMD_STREAM, true);
         while (n--) { i2c_master_write_byte(cmd, *c++, true); }
         i2c_master_stop(cmd);
@@ -365,7 +363,7 @@ void Adafruit_SSD1306::display(void)
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 
 	i2c_master_start(cmd);
-	i2c_master_write_byte(cmd, (SSD1306_I2C_ADDRESS << 1) | I2C_MASTER_WRITE, true);
+	i2c_master_write_byte(cmd, (i2caddr << 1) | I2C_MASTER_WRITE, true);
 	i2c_master_write_byte(cmd, SSD1306_CONTROL_BYTE_DATA_STREAM, true);
 
     while (count--) {

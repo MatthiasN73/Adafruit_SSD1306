@@ -27,8 +27,6 @@
 #include "driver/i2c.h"
 #include <Adafruit_GFX.h>
 
-#define SSD1306_I2C_ADDRESS   0x3C
-
 // Control byte
 #define SSD1306_CONTROL_BYTE_CMD_SINGLE    0x80
 #define SSD1306_CONTROL_BYTE_CMD_STREAM    0x00
@@ -105,7 +103,7 @@ public:
     Adafruit_SSD1306(uint8_t w, uint8_t h, i2c_port_t port);
     ~Adafruit_SSD1306(void);
 
-    bool begin();
+    bool begin(int8_t addr);
     void display(void);
     void clearDisplay(void);
     void invertDisplay(bool i);
@@ -121,10 +119,11 @@ public:
     uint8_t* getBuffer(void);
 
 protected:
-    i2c_port_t i2c;
+    i2c_port_t i2c;     ///< Initialized during construction 
     uint8_t *buffer;    ///< Buffer data used for display buffer. Allocated when
                         ///< begin method is called.
-    uint8_t contrast;   ///< normal contrast setting for this device    
+    uint8_t contrast;   ///< normal contrast setting for this device
+    int8_t i2caddr;     ///< I2C address initialized when begin method is called.
 
     void ssd1306_command1(uint8_t c);
     void ssd1306_commandList(const uint8_t *c, uint8_t n);
